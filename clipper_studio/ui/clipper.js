@@ -4,6 +4,7 @@ const sourceList = document.getElementById("sourceList");
 const sourceCount = document.getElementById("sourceCount");
 const preview = document.getElementById("preview");
 const playerEmpty = document.getElementById("playerEmpty");
+const timelineScrubber = document.getElementById("timelineScrubber");
 const currentTime = document.getElementById("currentTime");
 const durationLabel = document.getElementById("duration");
 const sourceInfo = document.getElementById("sourceInfo");
@@ -25,6 +26,9 @@ let sources = [];
 let activeSource = null;
 let clips = [];
 let endOfPreview = null;
+
+document.getElementById("importVideoButton").addEventListener("click", () => fileInput.click());
+document.getElementById("emptyImportButton").addEventListener("click", () => fileInput.click());
 
 function formatTime(seconds) {
   const value = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
@@ -86,6 +90,10 @@ function selectSource(source) {
   endInput.value = Math.min(30, source.duration_seconds).toFixed(1);
   startInput.max = source.duration_seconds;
   endInput.max = source.duration_seconds;
+  timelineScrubber.max = source.duration_seconds;
+  timelineScrubber.value = "0";
+  timelineScrubber.disabled = false;
+  timelineScrubber.style.setProperty("--progress", "0%");
   markStartButton.disabled = false;
   markEndButton.disabled = false;
   addButton.disabled = false;
@@ -119,7 +127,14 @@ function renderClips() {
   if (!clips.length) {
     const empty = document.createElement("div");
     empty.className = "empty-list";
-    empty.textContent = "Votre liste est vide. Repérez un passage et ajoutez-le.";
+    const icon = document.createElement("span");
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "✂";
+    const title = document.createElement("b");
+    title.textContent = "Aucun clip pour le moment";
+    const hint = document.createElement("small");
+    hint.textContent = "Marquez un début et une fin, puis ajoutez le passage à votre liste.";
+    empty.append(icon, title, hint);
     clipList.append(empty);
     return;
   }
@@ -233,6 +248,9 @@ markEndButton.addEventListener("click", () => {
 });
 preview.addEventListener("timeupdate", () => {
   currentTime.textContent = formatTime(preview.currentTime);
+  timelineScrubber.value = String(preview.currentTime);
+  const progress = preview.duration ? (preview.currentTime / preview.duration) * 100 : 0;
+  timelineScrubber.style.setProperty("--progress", `${progress}%`);
   if (endOfPreview !== null && preview.currentTime >= endOfPreview) {
     preview.pause();
     endOfPreview = null;
@@ -240,6 +258,14 @@ preview.addEventListener("timeupdate", () => {
 });
 preview.addEventListener("loadedmetadata", () => {
   durationLabel.textContent = displayDuration(preview.duration);
+  timelineScrubber.max = preview.duration;
+});
+timelineScrubber.addEventListener("input", () => {
+  const time = Number(timelineScrubber.value);
+  preview.currentTime = time;
+  currentTime.textContent = formatTime(time);
+  const progress = preview.duration ? (time / preview.duration) * 100 : 0;
+  timelineScrubber.style.setProperty("--progress", `${progress}%`);
 });
 
 addButton.addEventListener("click", () => {
